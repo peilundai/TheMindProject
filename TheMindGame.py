@@ -10,7 +10,7 @@ class Player:
         self.level = level
         self.cards = []
         self.timer = np.inf
-        self.aggresiveness = np.random.random_integers(low=1, high=3)
+        self.aggresiveness = np.random.randint(low=1, high=11)  # 1-10
 
     def __str__(self):
         return "Name: " + str(self.name) + '\n' + "Cards: " + str(self.cards)
@@ -53,16 +53,32 @@ class Player:
     def read_timer(self):
         return self.timer
 
+    def my_cards(self):
+        return self.cards
+
     def update_timer(self, table):
-        # TODO
-        self.timer = np.random.random_integers(
+        # information needed to make a decision: how many steps should I wait
+        my_hands = self.my_cards()
+        on_table = table.show_all_cards() 
+        total_num = table.get_max_num_cards() # e.g. 100
+        aggresiveness = self.aggresiveness
+
+        # rules to update count down timer: how much time should I wait to play
+
+        # self.timer = 
+
+        self.timer = np.random.randint(
             low=1, high=5) * self.aggresiveness
+
+    def update_aggresiveness(self, table, should_played, played):
+        pass
 
 
 class Table:
 
-    def __init__(self):
+    def __init__(self, max_cards):
         self.cards = []
+        self.max_num_cards = max_cards
 
     def __str__(self):
         return str(self.show_all_cards())
@@ -73,8 +89,19 @@ class Table:
     def show_all_cards(self):
         return self.cards
 
-    def show_top_card(self):
+    def show_last_card(self):
         return self.cards[-1]
+    def show_max_card(self):
+        return max(self.cards)
+    
+    def get_max_num_cards(self):
+        return self.max_num_cards
+
+    def get_max_card(self):
+        if self.cards == []:
+            return 0
+        else:
+            return max(self.cards)
 
 
 class Deck:
@@ -112,15 +139,13 @@ class Clock:
         self.time = 0
 
 
-class Game:
+class Round:
 
-    def __init__(self, player_names, level, total_num_cards, verbose=False):
-        self.player_names = player_names
-        self.players_list = [Player(name, level) for name in player_names]
-        self.retired_players = []
-        self.players = {
-            player.get_name(): player for player in self.players_list}
-        self.table = Table()
+    def __init__(self, players_list, players, level, total_num_cards, verbose=False):
+        # self.player_names = player_names
+        self.players_list = players_list
+        self.players = players
+        self.table = Table(total_num_cards)
         self.deck = Deck(total_num_cards)
         self.clock = Clock()
         self.game_ended = False
@@ -131,38 +156,69 @@ class Game:
         if self.verbose:
             print("\n ---------------- t =",
                   self.clock.read_time(), " ----------------")
-        for player in self.players:
-            if not self.players[player].is_empty_hand():
-                self.players[player].dec_timer()
-                # print(self.players[player].read_timer())
+        # for player in self.players:
+        #     if not self.players[player].is_empty_hand():
+        #         self.players[player].dec_timer()
+
+
+        for player_ind in range(len(self.players_list)):
+            if not self.players_list[player_ind].is_empty_hand():
+                self.players_list[player_ind].dec_timer()
+
 
         any_play = [i for i in range(len(self.players_list)) if self.players_list[i].read_timer(
         ) == 0 and not self.players_list[i].is_empty_hand()]
-        # print(any_play)
+
         if not len(any_play) == 0:
             chosen_player = random.choice(any_play)
-            print("* Chosen player: ",
-                  self.players_list[chosen_player].get_name(), "\n")
+            
+            current_largest = self.table.get_max_card()
+
             played_card = self.players_list[chosen_player].play_card(
-                self.table)
-            # print(self.players_list[chosen_player].name, " played ", str(played_card))
+                self.table)            
+            
+            print(self.players_list[chosen_player].name,
+                  " played ", str(played_card))
+
+            if (played_card <= current_largest):
+                print(self.players_list[chosen_player].name, " made a mistake!!")
+                self.game_ended = True
+
+
             for player in self.players_list:
                 player.update_timer(self.table)
+
+            # if self.verbose == True:
+            #     # for ind in self.players:
+            #     #     current_player = self.players[ind]
+
+            #     for ind in range(len(self.players_list)):
+            #         current_player = self.players_list[ind]
+                
+            #         print(current_player.get_name(), ": time to play =",
+            #               current_player.read_timer(), "; hands=", current_player.cards)
+            #     print("On the table: ", self.table.show_all_cards())
+    
+        if self.verbose == True:
+            # for ind in self.players:
+            #     current_player = self.players[ind]
+
+            for ind in range(len(self.players_list)):
+                current_player = self.players_list[ind]
+            
+                print(current_player.get_name(), ": time to play =",
+                        current_player.read_timer(), "; hands=", current_player.cards)
+            print("On the table: ", self.table.show_all_cards())
 
         not_all_empty = False
         for player in self.players_list:
             not_all_empty = not_all_empty or not player.is_empty_hand()
-        self.game_ended = not not_all_empty
+        if self.game_ended == False:
+            self.game_ended = not not_all_empty
 
-        # display states for each player
-        if self.verbose == True:
-            for ind in self.players:
-                current_player = self.players[ind]
-                print(current_player.get_name(), ": timer=",
-                      current_player.read_timer(), "; hands=", current_player.cards)
-            print("On the table: ", self.table.show_all_cards())
     def play(self):
         for player in self.players_list:
+            player.cards = []
             player.draw_cards(self.deck)
             player.update_timer(self.table)
 
@@ -170,8 +226,29 @@ class Game:
         # for p in range(10):
             self.step()
 
+class Game:
+    def __init__(self, player_names, level, total_num_cards, num_rounds=100, verbose=False):
+        self.player_names = player_names
+        self.players_list = [Player(name, level) for name in player_names]
+        self.players = {
+            player.get_name(): player for player in self.players_list}
+        self.level = level
+        self.total_num_cards = total_num_cards
+        self.num_rounds = num_rounds
+        self.verbose = verbose
+        
+
+    def play_round(self):
+        r = Round(self.players_list, self.players, self.level, self.total_num_cards, verbose=self.verbose)
+        r.play()
+        
+
+
+
+
+
 if __name__ == "__main__":
 
     players = ["Ellen", "James", "Peilun"]
-    g = Game(players, level=3, total_num_cards=10, verbose=True)
-    g.play()
+    g = Game(players, level=3, total_num_cards=10, num_rounds=1, verbose=True)
+    g.play_round()

@@ -1,4 +1,6 @@
-import numpy as np
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import torch
 import random
 
@@ -150,6 +152,7 @@ class Round:
         self.clock = Clock()
         self.game_ended = False
         self.verbose = verbose
+        self.success = True
 
     def step(self):
         self.clock.step()
@@ -183,6 +186,7 @@ class Round:
             if (played_card <= current_largest):
                 print(self.players_list[chosen_player].name, " made a mistake!!")
                 self.game_ended = True
+                self.success = False
 
 
             for player in self.players_list:
@@ -241,14 +245,11 @@ class Game:
     def play_round(self):
         r = Round(self.players_list, self.players, self.level, self.total_num_cards, verbose=self.verbose)
         r.play()
-        
-
-
-
-
+        print(r.success)
+    
 
 if __name__ == "__main__":
 
     players = ["Ellen", "James", "Peilun"]
-    g = Game(players, level=3, total_num_cards=10, num_rounds=1, verbose=True)
+    g = Game(players, level=2, total_num_cards=10, num_rounds=1, verbose=False)
     g.play_round()

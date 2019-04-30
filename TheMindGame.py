@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import torch
+import numpy as np
 import random
 
 
@@ -61,19 +61,12 @@ class Player:
     def update_timer(self, table):
         # information needed to make a decision: how many steps should I wait
         my_hands = self.my_cards()
-        on_table = table.show_all_cards() 
-        total_num = table.get_max_num_cards() # e.g. 100
+        total_num = table.get_max_num_cards()  # e.g. 100
         aggresiveness = self.aggresiveness
 
         # rules to update count down timer: how much time should I wait to play
-
-        # self.timer = 
-
-        self.timer = np.random.randint(
-            low=1, high=5) * self.aggresiveness
-
-    def update_aggresiveness(self, table, should_played, played):
-        pass
+        self.timer = max(1, int((min(my_hands) - table.get_max_card())
+                                * np.exp(-aggresiveness/5)+np.random.normal(loc=0, scale=1)))
 
 
 class Table:
@@ -93,9 +86,10 @@ class Table:
 
     def show_last_card(self):
         return self.cards[-1]
+
     def show_max_card(self):
         return max(self.cards)
-    
+
     def get_max_num_cards(self):
         return self.max_num_cards
 
@@ -163,34 +157,47 @@ class Round:
         #     if not self.players[player].is_empty_hand():
         #         self.players[player].dec_timer()
 
-
         for player_ind in range(len(self.players_list)):
             if not self.players_list[player_ind].is_empty_hand():
                 self.players_list[player_ind].dec_timer()
-
 
         any_play = [i for i in range(len(self.players_list)) if self.players_list[i].read_timer(
         ) == 0 and not self.players_list[i].is_empty_hand()]
 
         if not len(any_play) == 0:
+            # some playe plays the game
             chosen_player = random.choice(any_play)
-            
-            current_largest = self.table.get_max_card()
-
             played_card = self.players_list[chosen_player].play_card(
-                self.table)            
-            
+                self.table)
+
+            # check if the play is correct
+            smallest_player = chosen_player
+            smallest_card = played_card
+            for (_ind, _player) in enumerate(self.players_list):
+                if _player.cards != [] and min(_player.cards) < smallest_card:
+                    smallest_player = _ind
+                    smallest_card = min(_player.cards)
+
             print(self.players_list[chosen_player].name,
                   " played ", str(played_card))
 
-            if (played_card <= current_largest):
-                print(self.players_list[chosen_player].name, " made a mistake!!")
+            if (smallest_player != chosen_player):
+                print(
+                    self.players_list[chosen_player].name, " made a mistake!!")
+                # decrease aggresiveness by 1
+                self.players_list[chosen_player].aggresiveness = max(
+                    1, self.players_list[chosen_player].aggresiveness - 1)
+                self.players_list[smallest_player].aggresiveness = max(
+                    1, self.players_list[chosen_player].aggresiveness + 1)
+                # smallest_ind = chosen_player
+                # for ind, player in enumerate(self.players_list):
+
                 self.game_ended = True
                 self.success = False
 
-
             for player in self.players_list:
-                player.update_timer(self.table)
+                if not player.cards == []:
+                    player.update_timer(self.table)
 
             # if self.verbose == True:
             #     # for ind in self.players:
@@ -198,20 +205,20 @@ class Round:
 
             #     for ind in range(len(self.players_list)):
             #         current_player = self.players_list[ind]
-                
+
             #         print(current_player.get_name(), ": time to play =",
             #               current_player.read_timer(), "; hands=", current_player.cards)
             #     print("On the table: ", self.table.show_all_cards())
-    
+
         if self.verbose == True:
             # for ind in self.players:
             #     current_player = self.players[ind]
 
             for ind in range(len(self.players_list)):
                 current_player = self.players_list[ind]
-            
+
                 print(current_player.get_name(), ": time to play =",
-                        current_player.read_timer(), "; hands=", current_player.cards)
+                      current_player.read_timer(), "; hands=", current_player.cards)
             print("On the table: ", self.table.show_all_cards())
 
         not_all_empty = False
@@ -227,8 +234,9 @@ class Round:
             player.update_timer(self.table)
 
         while (self.game_ended == False):
-        # for p in range(10):
+            # for p in range(10):
             self.step()
+
 
 class Game:
     def __init__(self, player_names, level, total_num_cards, num_rounds=100, verbose=False):
@@ -240,16 +248,26 @@ class Game:
         self.total_num_cards = total_num_cards
         self.num_rounds = num_rounds
         self.verbose = verbose
-        
 
     def play_round(self):
-        r = Round(self.players_list, self.players, self.level, self.total_num_cards, verbose=self.verbose)
-        r.play()
-        print(r.success)
-    
+
+        num_sucess = 0.0
+        for trial in range(self.num_rounds):
+            print("============trial number:", trial, "============")
+            r = Round(self.players_list, self.players, self.level,
+                      self.total_num_cards, verbose=self.verbose)
+            r.play()
+            if r.success:
+                num_sucess = num_sucess + 1
+
+        print('Percent success', num_sucess/self.num_rounds*100, "%")
+        for player in self.players_list:
+            print(player.aggresiveness)
+
 
 if __name__ == "__main__":
 
     players = ["Ellen", "James", "Peilun"]
-    g = Game(players, level=2, total_num_cards=10, num_rounds=1, verbose=False)
+    g = Game(players, level=4, total_num_cards=100,
+             num_rounds=300, verbose=False)
     g.play_round()

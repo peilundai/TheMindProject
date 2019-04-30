@@ -3,6 +3,7 @@
 
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 
 class Player:
@@ -12,7 +13,7 @@ class Player:
         self.level = level
         self.cards = []
         self.timer = np.inf
-        self.aggresiveness = np.random.randint(low=1, high=11)  # 1-10
+        self.aggresiveness = np.random.randint(low=-10, high=10)  # 1-10
 
     def __str__(self):
         return "Name: " + str(self.name) + '\n' + "Cards: " + str(self.cards)
@@ -185,10 +186,12 @@ class Round:
                 print(
                     self.players_list[chosen_player].name, " made a mistake!!")
                 # decrease aggresiveness by 1
-                self.players_list[chosen_player].aggresiveness = max(
-                    1, self.players_list[chosen_player].aggresiveness - 1)
-                self.players_list[smallest_player].aggresiveness = max(
-                    1, self.players_list[chosen_player].aggresiveness + 1)
+                # self.players_list[chosen_player].aggresiveness = max(
+                #     1, self.players_list[chosen_player].aggresiveness - 1)
+                # self.players_list[smallest_player].aggresiveness = max(
+                #     1, self.players_list[chosen_player].aggresiveness + 1)
+                self.players_list[chosen_player].aggresiveness = self.players_list[chosen_player].aggresiveness - 1
+                self.players_list[smallest_player].aggresiveness = self.players_list[chosen_player].aggresiveness + 1
                 # smallest_ind = chosen_player
                 # for ind, player in enumerate(self.players_list):
 
@@ -252,22 +255,55 @@ class Game:
     def play_round(self):
 
         num_sucess = 0.0
+        success_record = []
+        aggressive_record = np.zeros((self.num_rounds, len(self.player_names))) # hard coded number of players
+        print("shape:", aggressive_record.shape)
         for trial in range(self.num_rounds):
             print("============trial number:", trial, "============")
             r = Round(self.players_list, self.players, self.level,
                       self.total_num_cards, verbose=self.verbose)
             r.play()
+            success_record.append(r.success)
+
             if r.success:
                 num_sucess = num_sucess + 1
+            for item, player in enumerate(self.players_list):
+                print(trial)
+                print(item)
+                aggressive_record[trial, item] = player.aggresiveness
+
 
         print('Percent success', num_sucess/self.num_rounds*100, "%")
         for player in self.players_list:
             print(player.aggresiveness)
 
+        return success_record, aggressive_record
+
 
 if __name__ == "__main__":
 
     players = ["Ellen", "James", "Peilun"]
-    g = Game(players, level=4, total_num_cards=100,
-             num_rounds=300, verbose=False)
-    g.play_round()
+    g = Game(players, level=10, total_num_cards=100,
+             num_rounds=1000, verbose=False)
+    success_record, aggressiveness_record = g.play_round()
+    # print(success_record)
+    # print(aggressiveness_record)
+
+    # plotting figures
+
+    # plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,0])
+    # plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,1])
+    # plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,2])
+
+    # plt.ylabel('Aggresiveness parameter for each player')
+    # plt.xlabel('Number of rounds the game was played')
+    # plt.show()
+
+    # percent correct 
+    percept_correct = [sum(success_record[i*100:(i+1)*100])/100 for i in range(10)]
+    plt.plot(np.arange(len(percept_correct))*100, percept_correct)
+    
+    plt.ylabel('Percent of success players')
+    plt.xlabel('Number of rounds the game was played')
+    plt.show()
+

@@ -66,7 +66,11 @@ class Player:
         aggresiveness = self.aggresiveness
 
         # rules to update count down timer: how much time should I wait to play
-        self.timer = max(1, int((min(my_hands) - table.get_max_card())
+        #probability that the next card is yours:
+        #(min(my_hands) - table.get_max_card()) / (100 - min(my_hands) - len(my_hands) - 1)
+        #this above probability is the chance that one other player has one card below yours.
+        
+        self.timer = max(1, int((min(my_hands) - table.get_max_card()) / (100 - min(my_hands) - len(my_hands) - 1)
                                 * np.exp(-aggresiveness/5)+np.random.normal(loc=0, scale=1)))
 
 
@@ -290,14 +294,13 @@ if __name__ == "__main__":
     # print(aggressiveness_record)
 
     # plotting figures
+    plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10,  [:200:10,0])
+    plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,1])
+    plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,2])
 
-    # plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,0])
-    # plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,1])
-    # plt.plot(np.arange(len(aggressiveness_record[:200:10,0]))*10, aggressiveness_record[:200:10,2])
-
-    # plt.ylabel('Aggresiveness parameter for each player')
-    # plt.xlabel('Number of rounds the game was played')
-    # plt.show()
+    plt.ylabel('Aggresiveness parameter for each player')
+    plt.xlabel('Number of rounds the game was played')
+    plt.show()
 
     # percent correct 
     percept_correct = [sum(success_record[i*100:(i+1)*100])/100 for i in range(10)]
